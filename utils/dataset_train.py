@@ -45,8 +45,7 @@ class dataset_train(Dataset):
 
     def __getitem__(self, item):
         pic_train = cv2.imread(self.csv.loc[item, "path"])
-        if self.isRandom:
-            pic_train = self.get_random_data(pic_train, self.input_shape)
+        pic_train = self.get_random_data(pic_train, self.input_shape, random=self.isRandom)
         pic_train = np.transpose(cv2.cvtColor(pic_train, cv2.COLOR_BGR2RGB), [2, 0, 1])
         pic_label = np.array(self.csv.loc[item, self.label])
         return pic_train / 255.0, pic_label
