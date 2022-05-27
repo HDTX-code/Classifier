@@ -4,9 +4,8 @@ import torch
 from nets import BasicBlock, ResNet18
 
 
-def load_model(model, model_path):
+def load_model(model, model_path, device):
     print('Loading weights into state dict...')
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model_dict = model.state_dict()
     pretrained_dict = torch.load(model_path, map_location=device)
     a = {}
@@ -26,13 +25,13 @@ def load_model(model, model_path):
     return model
 
 
-def get_model(backbone, model_path, num_classes):
+def get_model(backbone, model_path, device, num_classes):
     if backbone == 'resnet18':
         model = ResNet18(BasicBlock, num_classes=num_classes)
     else:
         model = ResNet18(BasicBlock, num_classes=num_classes)
     if model_path != "":
-        model = load_model(model, model_path)
+        model = load_model(model.to(device), model_path, device)
     return model
 
 
