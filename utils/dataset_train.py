@@ -105,5 +105,5 @@ class dataset_train(Dataset):
                 image = cv2.flip(image, 1)
 
         #   将图像多余的部分加上灰条
-        image, label = self.resize_cv2(image, input_shape)
-        return image, label
+        image = self.resize_cv2(image, input_shape)
+        return image
