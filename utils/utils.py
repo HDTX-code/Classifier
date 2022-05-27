@@ -27,11 +27,11 @@ def load_model(model, model_path, device):
 
 def get_model(backbone, model_path, device, num_classes):
     if backbone == 'resnet18':
-        model = ResNet18(BasicBlock, num_classes=num_classes)
+        model = ResNet18(BasicBlock, num_classes=num_classes).to(device)
     else:
-        model = ResNet18(BasicBlock, num_classes=num_classes)
+        model = ResNet18(BasicBlock, num_classes=num_classes).to(device)
     if model_path != "":
-        model = load_model(model.to(device), model_path, device)
+        model = load_model(model, model_path, device)
     return model
 
 
