@@ -33,7 +33,7 @@ def go_train_classes(args):
         os.makedirs(args.save_dir)
 
     # 加载模型
-    model = get_model(args.backbone, args.model_path, device, args.num_classes)
+    model = get_model(args.backbone, args.model_path, args.num_classes)
 
     # 生成loss_history
     loss_history = LossHistory(args.save_dir, model, input_shape=[args.h, args.w])
