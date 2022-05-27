@@ -55,32 +55,34 @@ def fit_one_epoch(model, optimizer, epoch_now, epoch_Freeze, num_classes,
             val_loss = 0
             val_score = 0
             model.eval().to(device)
-            with torch.no_grad():
-                weights = torch.from_numpy(cls_weights).type(torch.FloatTensor).to(device)
-                pic_train = pic_train.type(torch.FloatTensor).to(device)
-                label = label.long().to(device)
+            for iteration, (pic_train, label) in enumerate(gen_val):
+                with torch.no_grad():
+                    weights = torch.from_numpy(cls_weights).type(torch.FloatTensor).to(device)
+                    pic_train = pic_train.type(torch.FloatTensor).to(device)
+                    label = label.long().to(device)
 
-                outputs = model(pic_train)
+                    outputs = model(pic_train)
 
-                loss = 0
-                score = 0
+                    loss = 0
+                    score = 0
 
-                loss += CE_Loss(outputs, label, weights, num_classes=num_classes)
+                    loss += CE_Loss(outputs, label, weights, num_classes=num_classes)
 
-                if focal_loss:
-                    loss += Focal_Loss(outputs, label, weights, num_classes=num_classes)
+                    if focal_loss:
+                        loss += Focal_Loss(outputs, label, weights, num_classes=num_classes)
 
-                # -------------------------------#
-                #   计算score
-                # -------------------------------#
-                score += get_score(outputs, label)
+                    # -------------------------------#
+                    #   计算score
+                    # -------------------------------#
+                    score += get_score(outputs, label)
 
-                val_loss += loss.item()
-                val_score += score.item()
+                    val_loss += loss.item()
+                    val_score += score.item()
 
-                pbar_train.set_postfix(**{'l': val_loss / (iteration + 1),
-                                          's': val_score / (iteration + 1),
-                                          'r': get_lr(optimizer)})
+                    pbar_val.set_postfix(**{'l': val_loss / (iteration + 1),
+                                            's': val_score / (iteration + 1),
+                                            'r': get_lr(optimizer)})
+                    pbar_val.update(1)
         # 保存模型
         with torch.no_grad():
             print('Finish Validation')
