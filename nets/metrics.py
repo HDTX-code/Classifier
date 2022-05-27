@@ -8,7 +8,8 @@ import torch.nn.functional as F
 
 def get_score(inputs, target):
     input = torch.argmax(inputs, dim=-1)
-    return torch.sum(input == target)
+    score = torch.sum(input == target)
+    return score.mean()
 
 
 def CE_Loss(inputs, target, cls_weights, num_classes=21):
