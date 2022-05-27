@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 def get_score(inputs, target):
     input = torch.argmax(inputs, dim=-1)
-    score = torch.sum(input == target)
+    score = torch.sum(input == target).type(torch.FloatTensor)
     return score.mean()
 
 
