@@ -32,7 +32,7 @@ def go_pre(args):
     model = get_model(args.backbone, args.model_path, args.num_classes)
 
     # dataloader
-    dataset = dataset_predict(copy.copy(class_df), [args.h, args.w], args.is_pre)
+    dataset = dataset_predict(copy.copy(class_df), [args.h, args.w], args.is_pre, label=args.label)
     gen = DataLoader(dataset, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers)
 
     # 开始预测
