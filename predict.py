@@ -60,7 +60,7 @@ def go_pre(args):
                     output = model(pic)
                     score = get_score(output, pic_label)
                     Score += score.item()
-                    pbar.set_postfix(**{'s': Score/(item+1)})
+                    pbar.set_postfix(**{'s': Score / (item + 1)})
                     label_item = label_item.cpu().numpy()
                     for item_batch in range(output.shape[0]):
                         pr = output[item_batch].argmax().cpu().numpy()
@@ -77,7 +77,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_classes', type=int, default=3, help='种类数量')
     parser.add_argument('--save_dir', type=str, default="./", help='存储文件夹位置')
     parser.add_argument('--model_path', type=str,
-                        default=r"D:\work\project\Kaggle_uw\data\weights\class_weights\ep012-score0.953-val_score0.957.pth", help='模型参数位置')
+                        default=r"D:\work\project\Kaggle_uw\data\weights\class_weights\ep012-score0.953-val_score0.957.pth",
+                        help='模型参数位置')
     parser.add_argument('--class_df_path', type=str,
                         default=r"D:\work\project\Kaggle_uw\data\weights\class_weights\csv\val_csv.csv", help='预测csv路径')
     parser.add_argument('--num_workers', type=int, default=2, help="num_workers")
@@ -89,3 +90,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     go_pre(args)
+
+    # data = pd.read_csv("./class_predict.csv")
+    # data_raw = pd.read_csv(r"D:\work\project\Kaggle_uw\data\weights\class_weights\csv\val_csv.csv")
+    # print(data["class"].value_counts())
+    # print(data["class_predict"].value_counts())
+    # print(data.loc[data["class_predict"] == data["class"], "class_predict"].value_counts())
+    # print(sum(data["class_predict"] == data_raw["class"]))
