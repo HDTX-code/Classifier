@@ -71,19 +71,19 @@ def go_train_classes(args):
         gen_val = None
     for epoch_now in range(args.epoch):
         set_optimizer_lr(optimizer, lr_scheduler_func, epoch_now)
-        fit_one_epoch(model=model,
-                      optimizer=optimizer,
-                      epoch_now=epoch_now,
-                      epoch_Freeze=0,
-                      epoch_all=args.epoch,
-                      gen=gen,
-                      gen_val=gen_val,
-                      save_dir=args.save_dir,
-                      cls_weights=cls_weights,
-                      device=device,
-                      loss_history=loss_history,
-                      num_classes=args.num_classes,
-                      interval=args.save_interval)
+        model = fit_one_epoch(model=model,
+                              optimizer=optimizer,
+                              epoch_now=epoch_now,
+                              epoch_Freeze=0,
+                              epoch_all=args.epoch,
+                              gen=gen,
+                              gen_val=gen_val,
+                              save_dir=args.save_dir,
+                              cls_weights=cls_weights,
+                              device=device,
+                              loss_history=loss_history,
+                              num_classes=args.num_classes,
+                              interval=args.save_interval)
 
 
 if __name__ == '__main__':
