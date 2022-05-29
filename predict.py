@@ -1,3 +1,4 @@
+import argparse
 import copy
 import os
 
@@ -48,7 +49,7 @@ def go_pre(args):
     class_df["path"] = data_list
     class_df["id"] = class_df["path"].apply(lambda x: str(x.split("/")[5]) + "_" + str(
         x.split("/")[-1].split("_")[0] + '_' + x.split("/")[-1].split("_")[1]))
-    dataset = dataset_predict(copy.copy(class_df), [args.h, args.w])
+    dataset = dataset_predict(copy.copy(class_df), [args.h, args.w], args.is_pre)
     gen = DataLoader(dataset, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers)
 
     # 开始预测
@@ -65,3 +66,23 @@ def go_pre(args):
 
     # 保存结果
     class_df.to_csv(os.path.join(args.save_dir, "class_predict.csv"))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='预测设置')
+    parser.add_argument('--backbone', type=str, default='resnet50', help='特征网络选择，默认resnet50')
+    parser.add_argument('--num_classes', type=int, default=3, help='种类数量')
+    parser.add_argument('--save_dir', type=str, default="./", help='存储文件夹位置')
+    parser.add_argument('--model_path', type=str,
+                        default="../input/uw-weigths/ep024-f_score0.890-val_f_score0.879.pth", help='模型参数位置')
+    parser.add_argument('--pic_path', type=str, default=r"../input/uw-madison-gi-tract-image-segmentation",
+                        help="pic文件夹位置")
+    parser.add_argument('--num_workers', type=int, default=2, help="num_workers")
+    parser.add_argument('--is_pre', type=bool, default=True, help="是否预处理")
+    parser.add_argument('--batch_size', type=int, default=64, help="batch_size")
+    parser.add_argument('--w', type=int, default=384, help='宽')
+    parser.add_argument('--h', type=int, default=384, help='高')
+    args = parser.parse_args()
+
+    go_pre(args)
+

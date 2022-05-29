@@ -1,4 +1,5 @@
 import copy
+import math
 
 import cv2
 import numpy as np
@@ -89,6 +90,12 @@ def get_random_data(image, input_shape, random=True):
     return image
 
 
+def gamma_trans(img, gamma):
+    gamma_table = [np.power(x / 255.0, gamma) * 255.0 for x in range(256)]
+    gamma_table = np.round(np.array(gamma_table)).astype(np.uint8)
+    return cv2.LUT(img, gamma_table)
+
+
 class dataset_train(Dataset):
     def __init__(self, csv, num_classes, input_shape, isRandom=True, label="label"):
         super(Dataset, self).__init__()
@@ -110,21 +117,30 @@ class dataset_train(Dataset):
 
 
 class dataset_predict(Dataset):
-    def __init__(self, csv, input_shape):
+    def __init__(self, csv, input_shape, is_pre=True):
         super(Dataset, self).__init__()
         self.csv = csv
         self.input_shape = input_shape
+        self.is_pre = is_pre
 
     def __len__(self):
         return len(self.csv)
 
     def __getitem__(self, item):
-        pic_train = cv2.imread(self.csv.loc[item, "path"])
-        pic_train = get_random_data(pic_train, self.input_shape, random=False)
-        pic_train = np.transpose(cv2.cvtColor(pic_train, cv2.COLOR_BGR2RGB), [2, 0, 1])
-        pic_label = np.array(item)
-        return pic_train / 255.0, pic_label
+        if self.is_pre:
+            pic = self.do_pre(cv2.imread(self.csv.loc[item, "path"]))
+        else:
+            pic = cv2.imread(self.csv.loc[item, "path"])
 
+        pic = get_random_data(pic, self.input_shape, random=False)
+        pic = np.transpose(cv2.cvtColor(pic, cv2.COLOR_BGR2RGB), [2, 0, 1])
+        label = np.array(item)
+        return pic / 255.0, label
 
-
-
+    @staticmethod
+    def do_pre(png):
+        if not (png == 0).all():
+            png = png * 5
+            png[png > 255] = 255
+            png = gamma_trans(png, math.log10(0.5) / math.log10(np.mean(png[png > 0]) / 255))
+        return png
