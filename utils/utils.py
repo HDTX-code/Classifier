@@ -7,7 +7,7 @@ from nets import BasicBlock, ResNet18
 def load_model(model, model_path):
     print('Loading weights into state dict...')
     model_dict = model.state_dict()
-    pretrained_dict = torch.load(model_path)
+    pretrained_dict = torch.load(model_path, map_location=torch.device('cpu'))
     a = {}
     no_load = 0
     for k, v in pretrained_dict.items():

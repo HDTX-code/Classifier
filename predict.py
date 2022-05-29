@@ -73,18 +73,19 @@ def go_pre(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='预测设置')
-    parser.add_argument('--backbone', type=str, default='resnet50', help='特征网络选择，默认resnet50')
+    parser.add_argument('--backbone', type=str, default='resnet18', help='特征网络选择，默认resnet50')
     parser.add_argument('--num_classes', type=int, default=3, help='种类数量')
     parser.add_argument('--save_dir', type=str, default="./", help='存储文件夹位置')
     parser.add_argument('--model_path', type=str,
-                        default="../input/uw-weigths/ep024-f_score0.890-val_f_score0.879.pth", help='模型参数位置')
-    parser.add_argument('--class_df_path', type=str, default="./class_df.csv", help='预测csv路径')
+                        default=r"D:\work\project\Kaggle_uw\data\weights\class_weights\ep012-score0.953-val_score0.957.pth", help='模型参数位置')
+    parser.add_argument('--class_df_path', type=str,
+                        default=r"D:\work\project\Kaggle_uw\data\weights\class_weights\csv\val_csv.csv", help='预测csv路径')
     parser.add_argument('--num_workers', type=int, default=2, help="num_workers")
     parser.add_argument('--is_pre', type=bool, default=False, help="是否预处理")
     parser.add_argument('--batch_size', type=int, default=64, help="batch_size")
-    parser.add_argument('--label', type=str, default=None, help="标签列名")
-    parser.add_argument('--w', type=int, default=384, help='宽')
-    parser.add_argument('--h', type=int, default=384, help='高')
+    parser.add_argument('--label', type=str, default='class', help="标签列名")
+    parser.add_argument('--w', type=int, default=256, help='宽')
+    parser.add_argument('--h', type=int, default=256, help='高')
     args = parser.parse_args()
 
     go_pre(args)
