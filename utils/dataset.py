@@ -117,11 +117,12 @@ class dataset_train(Dataset):
 
 
 class dataset_predict(Dataset):
-    def __init__(self, csv, input_shape, is_pre=True):
+    def __init__(self, csv, input_shape, is_pre=True, label = None):
         super(Dataset, self).__init__()
         self.csv = csv
         self.input_shape = input_shape
         self.is_pre = is_pre
+        self.label = label
 
     def __len__(self):
         return len(self.csv)
@@ -131,11 +132,14 @@ class dataset_predict(Dataset):
             pic = self.do_pre(cv2.imread(self.csv.loc[item, "path"]))
         else:
             pic = cv2.imread(self.csv.loc[item, "path"])
-
         pic = resize_cv2(pic, self.input_shape)
         pic = np.transpose(cv2.cvtColor(pic, cv2.COLOR_BGR2RGB), [2, 0, 1])
-        label = np.array(item)
-        return pic / 255.0, label
+        label_item = np.array(item)
+        if self.label is None:
+            return pic / 255.0, label_item
+        else:
+            pic_label = np.array(self.csv.loc[item, self.label])
+            return pic / 255.0, label_item, pic_label
 
     @staticmethod
     def do_pre(png):
