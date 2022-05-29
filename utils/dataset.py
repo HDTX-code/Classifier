@@ -132,7 +132,7 @@ class dataset_predict(Dataset):
         else:
             pic = cv2.imread(self.csv.loc[item, "path"])
 
-        pic = get_random_data(pic, self.input_shape, random=False)
+        pic = resize_cv2(pic, self.input_shape)
         pic = np.transpose(cv2.cvtColor(pic, cv2.COLOR_BGR2RGB), [2, 0, 1])
         label = np.array(item)
         return pic / 255.0, label
