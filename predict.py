@@ -25,30 +25,12 @@ def go_pre(args):
         os.makedirs(args.save_dir)
 
     # 生成提交csv
-    class_df = pd.DataFrame(columns=["id", "path", "class_predict"])
+    class_df = pd.read_csv(args.class_df_path)
 
     # 加载模型
     model = get_model(args.backbone, args.model_path, args.num_classes)
 
-    # 加载dataloader
-    data_list = []
-    if os.path.exists(os.path.join(args.pic_path, 'test')):
-        path_root = os.path.join(args.pic_path, 'test')
-        for item_case in os.listdir(path_root):
-            for item_day in os.listdir(os.path.join(path_root, item_case)):
-                path = os.path.join(path_root, item_case, item_day, 'scans')
-                data_list.extend(map(lambda x: os.path.join(path, x), os.listdir(path)))
-    else:
-        path_root = os.path.join(args.pic_path, 'train')
-        for item_case in os.listdir(path_root):
-            for item_day in os.listdir(os.path.join(path_root, item_case)):
-                path = os.path.join(path_root, item_case, item_day, 'scans')
-                data_list.extend(map(lambda x: os.path.join(path, x), os.listdir(path)))
-            break
-
-    class_df["path"] = data_list
-    class_df["id"] = class_df["path"].apply(lambda x: str(x.split("/")[5]) + "_" + str(
-        x.split("/")[-1].split("_")[0] + '_' + x.split("/")[-1].split("_")[1]))
+    # dataloader
     dataset = dataset_predict(copy.copy(class_df), [args.h, args.w], args.is_pre)
     gen = DataLoader(dataset, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers)
 
@@ -75,6 +57,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_dir', type=str, default="./", help='存储文件夹位置')
     parser.add_argument('--model_path', type=str,
                         default="../input/uw-weigths/ep024-f_score0.890-val_f_score0.879.pth", help='模型参数位置')
+    parser.add_argument('--class_df_path', type=str, default="./class_df.csv", help='预测csv路径')
     parser.add_argument('--pic_path', type=str, default=r"../input/uw-madison-gi-tract-image-segmentation",
                         help="pic文件夹位置")
     parser.add_argument('--num_workers', type=int, default=2, help="num_workers")
@@ -85,4 +68,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     go_pre(args)
-
