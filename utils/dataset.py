@@ -117,7 +117,7 @@ class dataset_train(Dataset):
 
 
 class dataset_predict(Dataset):
-    def __init__(self, csv, input_shape, is_pre=True, label = None):
+    def __init__(self, csv, input_shape, is_pre=True, label=None):
         super(Dataset, self).__init__()
         self.csv = csv
         self.input_shape = input_shape
