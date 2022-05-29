@@ -47,7 +47,7 @@ def go_pre(args):
                 pbar.update(1)
 
     # 保存结果
-    class_df.to_csv(os.path.join(args.save_dir, "class_predict.csv"))
+    class_df.to_csv(os.path.join(args.save_dir, "class_predict.csv"), index=False)
 
 
 if __name__ == '__main__':
