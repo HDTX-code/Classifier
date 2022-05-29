@@ -55,6 +55,7 @@ def go_pre(args):
                 Score = 0
                 for item, (pic, label_item, pic_label) in enumerate(gen):
                     pic = pic.type(torch.FloatTensor).to(device)
+                    pic_label = pic_label.long().to(device)
                     output = model(pic)
                     score = get_score(output, pic_label)
                     Score += score
