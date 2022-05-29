@@ -24,7 +24,6 @@ def fit_one_epoch(model, optimizer, epoch_now, epoch_Freeze, num_classes,
             optimizer.zero_grad()
             outputs = model(pic_train)
             loss = 0
-            score = 0
 
             loss += CE_Loss(outputs, label, weights, num_classes=num_classes)
 
@@ -35,7 +34,7 @@ def fit_one_epoch(model, optimizer, epoch_now, epoch_Freeze, num_classes,
                 # -------------------------------#
                 #   计算score
                 # -------------------------------#
-                score += get_score(outputs, label)
+                score = get_score(outputs, label)
 
             loss.backward()
             optimizer.step()
@@ -64,7 +63,6 @@ def fit_one_epoch(model, optimizer, epoch_now, epoch_Freeze, num_classes,
                     outputs = model(pic_train)
 
                     loss = 0
-                    score = 0
 
                     loss += CE_Loss(outputs, label, weights, num_classes=num_classes)
 
@@ -74,7 +72,7 @@ def fit_one_epoch(model, optimizer, epoch_now, epoch_Freeze, num_classes,
                     # -------------------------------#
                     #   计算score
                     # -------------------------------#
-                    score += get_score(outputs, label)
+                    score = get_score(outputs, label)
 
                     val_loss += loss.item()
                     val_score += score.item()
