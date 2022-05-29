@@ -36,8 +36,8 @@ def fit_one_epoch(model, optimizer, epoch_now, epoch_Freeze, num_classes,
                 # -------------------------------#
                 score = get_score(outputs, label)
 
-            loss.backward()
-            optimizer.step()
+            # loss.backward()
+            # optimizer.step()
 
             total_loss += loss.item()
             total_score += score.item()
