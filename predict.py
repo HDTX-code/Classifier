@@ -27,12 +27,13 @@ def go_pre(args):
 
     # 生成提交csv
     class_df = pd.read_csv(args.class_df_path)
+    class_df_dataset = copy.deepcopy(class_df)
 
     # 加载模型
     model = get_model(args.backbone, args.model_path, args.num_classes)
 
     # dataloader
-    dataset = dataset_predict(copy.copy(class_df), [args.h, args.w], args.is_pre, label=args.label)
+    dataset = dataset_predict(class_df_dataset, [args.h, args.w], args.is_pre, label=args.label)
     gen = DataLoader(dataset, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers)
 
     # 开始预测
