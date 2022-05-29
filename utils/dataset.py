@@ -130,6 +130,7 @@ class dataset_predict(Dataset):
     def __getitem__(self, item):
         if self.is_pre:
             pic = self.do_pre(cv2.imread(self.csv.loc[item, "path"]))
+            print(1)
         else:
             pic = cv2.imread(self.csv.loc[item, "path"])
         pic = resize_cv2(pic, self.input_shape)
