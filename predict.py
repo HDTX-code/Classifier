@@ -63,8 +63,8 @@ def go_pre(args):
                     pbar.set_postfix(**{'s': Score / (item + 1)})
                     label_item = label_item.cpu().numpy()
                     for item_batch in range(output.shape[0]):
-                        pr = output[item_batch].argmax().cpu().numpy()
-                        class_df.loc[label_item[item_batch, 0], "class_predict"] = pr
+                        pr = output[item_batch, :].argmax().cpu().numpy()
+                        class_df.loc[label_item[item_batch], "class_predict"] = pr
                     pbar.update(1)
 
     # 保存结果
