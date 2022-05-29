@@ -43,7 +43,7 @@ def go_pre(args):
                 output = model(pic)
                 label_item = label_item.cpu().numpy()
                 for item_batch in range(output.shape[0]):
-                    pr = output[item_batch].argmax(axis=-1).cpu().numpy()
+                    pr = output[item_batch].argmax().cpu().numpy()
                     class_df.loc[label_item[item_batch], "class_predict"] = pr
                 pbar.update(1)
 
