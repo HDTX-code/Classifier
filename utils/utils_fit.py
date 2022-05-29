@@ -11,40 +11,40 @@ def fit_one_epoch(model, optimizer, epoch_now, epoch_Freeze, num_classes,
                   epoch_all, gen, gen_val, save_dir, cls_weights, device,
                   loss_history, interval, focal_loss=True):
     print('Start Train')
-    with tqdm(total=len(gen), desc=f'Epoch {epoch_now + 1}/{epoch_all}', postfix=dict, mininterval=0.3) as pbar_train:
-        total_loss = 0
-        total_score = 0
-        model.train().to(device)
-        for iteration, (pic_train, label) in enumerate(gen):
-            with torch.no_grad():
-                weights = torch.from_numpy(cls_weights).type(torch.FloatTensor).to(device)
-                pic_train = pic_train.type(torch.FloatTensor).to(device)
-                label = label.long().to(device)
-
-            optimizer.zero_grad()
-            outputs = model(pic_train)
-            loss = 0
-
-            loss += CE_Loss(outputs, label, weights, num_classes=num_classes)
-
-            if focal_loss:
-                loss += Focal_Loss(outputs, label, weights, num_classes=num_classes)
-
-            with torch.no_grad():
-                # -------------------------------#
-                #   计算score
-                # -------------------------------#
-                score = get_score(outputs, label)
-
-            # loss.backward()
-            # optimizer.step()
-
-            total_loss += loss.item()
-            total_score += score.item()
-            pbar_train.set_postfix(**{'l': total_loss / (iteration + 1),
-                                      's': total_score / (iteration + 1),
-                                      'r': get_lr(optimizer)})
-            pbar_train.update(1)
+    # with tqdm(total=len(gen), desc=f'Epoch {epoch_now + 1}/{epoch_all}', postfix=dict, mininterval=0.3) as pbar_train:
+    #     total_loss = 0
+    #     total_score = 0
+    #     model.train().to(device)
+    #     for iteration, (pic_train, label) in enumerate(gen):
+    #         with torch.no_grad():
+    #             weights = torch.from_numpy(cls_weights).type(torch.FloatTensor).to(device)
+    #             pic_train = pic_train.type(torch.FloatTensor).to(device)
+    #             label = label.long().to(device)
+    #
+    #         optimizer.zero_grad()
+    #         outputs = model(pic_train)
+    #         loss = 0
+    #
+    #         loss += CE_Loss(outputs, label, weights, num_classes=num_classes)
+    #
+    #         if focal_loss:
+    #             loss += Focal_Loss(outputs, label, weights, num_classes=num_classes)
+    #
+    #         with torch.no_grad():
+    #             # -------------------------------#
+    #             #   计算score
+    #             # -------------------------------#
+    #             score = get_score(outputs, label)
+    #
+    #         loss.backward()
+    #         optimizer.step()
+    #
+    #         total_loss += loss.item()
+    #         total_score += score.item()
+    #         pbar_train.set_postfix(**{'l': total_loss / (iteration + 1),
+    #                                   's': total_score / (iteration + 1),
+    #                                   'r': get_lr(optimizer)})
+    #         pbar_train.update(1)
 
     print('Finish Train')
     if gen_val is not None:
