@@ -57,8 +57,8 @@ def go_pre(args):
         with torch.no_grad():
             model.eval().to(device)
             for item, (pic, label_item) in enumerate(gen):
-                png = png.type(torch.FloatTensor).to(device)
-                output = model(png)
+                pic = pic.type(torch.FloatTensor).to(device)
+                output = model(pic)
                 for item_batch in range(output.shape[0]):
                     pr = output[item_batch].argmax(axis=-1).cpu().numpy()
                     class_df.loc[label_item, "class_predict"] = pr[0]
