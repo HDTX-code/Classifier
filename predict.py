@@ -20,7 +20,11 @@ def go_pre(args):
 
     # 特征网络
     print("backbone = " + args.backbone)
+
+    # 是否预处理
+    print("is_pre: ", end="")
     print(args.is_pre)
+    print("")
 
     # 检查保存文件夹是否存在
     if not os.path.exists(args.save_dir):
