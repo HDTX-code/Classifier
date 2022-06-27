@@ -15,7 +15,7 @@ class ClassDataset(Dataset):
     def __getitem__(self, index):
         line = self.annotation_lines[index].split()
         image_path = line[0]
-        label = line[1]
+        label = int(line[1])
         img = Image.open(image_path).convert('RGB')
 
         if self.transforms is not None:

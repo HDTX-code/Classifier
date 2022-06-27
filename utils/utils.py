@@ -23,8 +23,7 @@ def get_dataloader_with_aspect_ratio_group(train_dataset, aspect_ratio_group_fac
     gen = torch.utils.data.DataLoader(train_dataset,
                                       batch_sampler=train_batch_sampler,
                                       pin_memory=True,
-                                      num_workers=num_workers,
-                                      collate_fn=train_dataset.collate_fn)
+                                      num_workers=num_workers)
     return gen
 
 

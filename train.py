@@ -34,15 +34,16 @@ def main(args):
     torch.cuda.set_device(args.GPU)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # num_workers
-    args.num_workers = min(min([os.cpu_count(), args.UnFreeze_batch_size if args.UnFreeze_batch_size > 1 else 0, 8]),
+    args.num_workers = min(min([os.cpu_count(), args.batch_size if args.batch_size > 1 else 0, 8]),
                            args.num_workers)
     # 混合精度
     scaler = torch.cuda.amp.GradScaler() if args.amp else None
 
     # 权重
     if args.cls_weights is None:
-        args.cls_weights = np.ones([2], np.float32)
+        args.cls_weights = np.ones([args.num_classes], np.float32)
     else:
+        assert len(args.cls_weights) == int(args.num_classes), 'len num_classes must eq len cls_weights'
         args.cls_weights = np.array(args.cls_weights, np.float32)
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     #                 dataset dataloader model                    #
@@ -91,7 +92,7 @@ def main(args):
                                                             args.Min_lr,
                                                             args.Epoch,
                                                             args.lr_decay_type,
-                                                            Auto=args.Auto)
+                                                            Auto=True)
 
     # 记录loss lr acc
     train_loss = []
@@ -124,13 +125,14 @@ def main(args):
     print("---------start Train---------")
     for epoch in range(start_Epoch, args.Epoch + 1):
         set_optimizer_lr(optimizer, lr_scheduler_func, epoch)
-        mean_loss, lr = train_one_epoch(model, optimizer, gen, device, epoch, cls_weights=args.cls_weights,
-                                        print_freq=int((num_train / args.UnFreeze_batch_size) // 5), scaler=scaler)
-        acc = evaluate(model, gen_val, device=device)
+        mean_loss, lr = train_one_epoch(model, optimizer, gen, device, epoch, max_epoch=args.Epoch + 1,
+                                        cls_weights=args.cls_weights, scaler=scaler, CE=args.CE,
+                                        print_freq=int((num_train / args.batch_size) // 5))
+        acc = evaluate(model, gen_val, device=device, print_freq=int(num_val // 5))
         train_loss.append(mean_loss)
         learning_rate.append(lr)
         val_acc.append(acc)
-        print('loss_{:.3f}'.format(mean_loss) + '\n' + 'acc_{:.3f}'.format(acc))
+        print('loss: {:.3f}'.format(mean_loss) + '\n' + 'acc: {:.3f}'.format(acc))
         # write into txt
         with open(results_file, "a") as f:
             f.write('loss_{:.3f}'.format(mean_loss) + '\n' + 'acc_{:.3f}'.format(acc) + "\n\n")
@@ -168,13 +170,13 @@ if __name__ == '__main__':
     parser.add_argument('--backbone', type=str, default='resnet50')
     parser.add_argument('--save_dir', type=str, default="./weights")
     parser.add_argument('--resume', type=str, default="", help='resume')
-    parser.add_argument('--GPU', type=int, default=6, help='GPU_ID')
+    parser.add_argument('--GPU', type=int, default=0, help='GPU_ID')
     parser.add_argument('--size', type=int, default=384, help='pic size')
-    parser.add_argument('--train', type=str, default=r"weights/train.txt", help="train_txt_path")
+    parser.add_argument('--train', type=str, default=r"weights/val.txt", help="train_txt_path")
     parser.add_argument('--val', type=str, default=r"weights/val.txt", help="val_txt_path")
     parser.add_argument('--optimizer_type', type=str, default='adam', help='adam or sgd')
     parser.add_argument('--num_classes', type=int, default=2)
-    parser.add_argument('--batch_size', type=int, default=24)
+    parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--aspect_ratio_group_factor', type=int, default=3)
     parser.add_argument('--lr_decay_type', type=str, default='cos', help="'step' or 'cos'")
     parser.add_argument('--num_workers', type=int, default=24, help="num_workers")
@@ -187,6 +189,7 @@ if __name__ == '__main__':
     parser.add_argument('--pretrained', default=False, action='store_true', help="pretrained")
     parser.add_argument('--amp', default=True, action='store_true', help="amp or Not")
     parser.add_argument('--save_best', default=True, action='store_true', help="save best or save all")
+    parser.add_argument('--CE', default=False, action='store_true', help="CE loss or Focal loss")
     parser.add_argument('--cls_weights', nargs='+', type=float, default=None, help='交叉熵loss系数')
     args = parser.parse_args()
 

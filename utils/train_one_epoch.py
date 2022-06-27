@@ -19,19 +19,19 @@ def Focal_Loss(inputs, target, loss_weight, ignore_index: int = -100, alpha=0.5,
     return loss
 
 
-def train_one_epoch(model, optimizer, data_loader, device, epoch, cls_weights,
+def train_one_epoch(model, optimizer, data_loader, device, epoch, cls_weights, max_epoch,
                     print_freq=10, scaler=None, CE=False):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = 'Epoch: [{}]'.format(epoch)
+    header = 'Epoch: [{}/{}]'.format(epoch, max_epoch)
 
     with torch.no_grad():
         cls_weights = torch.from_numpy(cls_weights).type(torch.FloatTensor).to(device)
 
     for images, labels in metric_logger.log_every(data_loader, print_freq, header):
         with torch.cuda.amp.autocast(enabled=scaler is not None):
-            image, labels = image.to(device), labels.to(device).long()
+            images, labels = images.to(device), labels.to(device).long()
             output = model(images)
             if CE:
                 loss = CE_Loss(output, labels, loss_weight=cls_weights)
@@ -53,18 +53,18 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, cls_weights,
     return metric_logger.meters["loss"].global_avg, lr
 
 
-def evaluate(model, data_loader, device):
+def evaluate(model, data_loader, device, print_freq=100):
     model.eval()
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Test:'
     acc = 0
     with torch.no_grad():
-        for images, labels in metric_logger.log_every(data_loader, 100, header):
-            image, labels = image.to(device), labels.to(device)
+        for images, labels in metric_logger.log_every(data_loader, print_freq, header):
+            images, labels = images.to(device), labels.to(device)
             output = model(images)
             predict_y = torch.max(output, dim=1)[1]
             acc += torch.eq(predict_y, labels.to(device)).sum().item()
-    return acc
+    return acc/len(data_loader)
 
 
 

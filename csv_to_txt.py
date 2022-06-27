@@ -10,6 +10,9 @@ def main(args):
     if not os.path.exists(args.save_path):
         os.mkdir(args.save_path)
     data_csv = pd.read_csv(args.csv_path)
+    data_csv['class'] = 0
+    data_csv.loc[data_csv[~((data_csv['segmentation_s'] == "0") & (data_csv['segmentation_sb'] == "0") &
+                            (data_csv['segmentation_lb'] == "0"))].index.tolist(), 'class'] = int(1)
     data_csv.index = list(range(len(data_csv)))
     num_list = random.sample(range(len(data_csv)), int(args.num_per * len(data_csv)))
     num = len(num_list)
@@ -19,19 +22,15 @@ def main(args):
     for item in num_list:
         if item in train:
             f_train.write(os.path.join(args.data_path, 'train_pic', data_csv.loc[item, 'id']) + '.png' + ' '
-                          + '0' if (
-                        (data_csv.loc[item, 'segmentation_s'] == "0") & (data_csv.loc[item, 'segmentation_sb'] == "0") &
-                        (data_csv.loc[item, 'segmentation_lb'] == "0")) else '1' + ' '
-                                                                             + str(data_csv.loc[item, 'slice_h']) + ' '
-                                                                             + str(
+                          + str(data_csv.loc[item, 'class']) + ' '
+                          + str(data_csv.loc[item, 'slice_h']) + ' '
+                          + str(
                 data_csv.loc[item, 'slice_w']) + '\n')
         else:
-            f_train.write(os.path.join(args.data_path, 'train_pic', data_csv.loc[item, 'id']) + '.png' + ' '
-                          + '0' if (
-                    (data_csv.loc[item, 'segmentation_s'] == "0") & (data_csv.loc[item, 'segmentation_sb'] == "0") &
-                    (data_csv.loc[item, 'segmentation_lb'] == "0")) else '1' + ' '
-                                                                         + str(data_csv.loc[item, 'slice_h']) + ' '
-                                                                         + str(
+            f_val.write(os.path.join(args.data_path, 'train_pic', data_csv.loc[item, 'id']) + '.png' + ' '
+                        + str(data_csv.loc[item, 'class']) + ' '
+                        + str(data_csv.loc[item, 'slice_h']) + ' '
+                        + str(
                 data_csv.loc[item, 'slice_w']) + '\n')
     f_train.close()
     f_val.close()
