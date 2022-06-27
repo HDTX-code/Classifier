@@ -1,112 +1,197 @@
 import argparse
 import os
+import datetime
+import time
 
 import numpy as np
-import pandas as pd
 import torch
-from torch import optim
+import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from nets import get_lr_scheduler, set_optimizer_lr
-from utils import get_model, dataset_train, LossHistory, fit_one_epoch
+from utils.dataset import ClassDataset
+from utils.plot_curve import plot_loss_and_lr, plot_acc
+from utils.train_one_epoch import train_one_epoch, evaluate
+from utils.utils import get_transform, get_dataloader_with_aspect_ratio_group, get_model, get_lr_fun, set_optimizer_lr
 
 
-def go_train_classes(args):
-    # 训练设备
-    print("GPU: ", end="")
-    print(torch.cuda.is_available())
-    print("")
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    print("backbone = " + args.backbone)
-    print("Init_lr = " + str(args.Init_lr))
-    if args.cls_weights is None:
-        cls_weights = np.ones([args.num_classes], np.float32)
-    else:
-        cls_weights = np.array(args.cls_weights, np.float32)
-    print('cls_weights = ', end='')
-    print(cls_weights)
-    print('')
-
+def main(args):
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    #                       训练相关准备                            #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    time_str = datetime.datetime.strftime(datetime.datetime.now(), '%Y%m%d%H%M%S')
+    log_dir = os.path.join(args.save_dir, "loss_" + str(time_str))
     # 检查保存文件夹是否存在
-    if not os.path.exists(args.save_dir):
-        os.makedirs(args.save_dir)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
-    # 加载模型
-    model = get_model(args.backbone, args.model_path, args.num_classes)
+    # 用来保存训练以及验证过程中信息
+    results_file = os.path.join(log_dir, "results.txt")
 
-    # 生成loss_history
-    loss_history = LossHistory(args.save_dir, model, input_shape=[args.h, args.w])
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    #                    训练参数设置相关准备                         #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    # 生成dataset
-    train_csv = pd.read_csv(args.train_csv_path)
-    train_dataset = dataset_train(train_csv, args.num_classes, [args.h, args.w], label=args.label)
-    if args.val_csv_path is not None:
-        val_csv = pd.read_csv(args.val_csv_path)
-        val_dataset = dataset_train(val_csv, args.num_classes, [args.h, args.w], isRandom=False, label=args.label)
+    torch.cuda.set_device(args.GPU)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # num_workers
+    args.num_workers = min(min([os.cpu_count(), args.UnFreeze_batch_size if args.UnFreeze_batch_size > 1 else 0, 8]),
+                           args.num_workers)
+    # 混合精度
+    scaler = torch.cuda.amp.GradScaler() if args.amp else None
+
+    # 权重
+    if args.cls_weights is None:
+        args.cls_weights = np.ones([2], np.float32)
     else:
-        val_dataset = None
+        args.cls_weights = np.array(args.cls_weights, np.float32)
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    #                 dataset dataloader model                    #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    # ---------------------------------------#
-    #   根据optimizer_type选择优化器
-    # ---------------------------------------#
+    with open(args.train, encoding='utf-8') as f:
+        train_lines = f.readlines()
+    with open(args.val, encoding='utf-8') as f:
+        val_lines = f.readlines()
+    num_train = len(train_lines)
+    num_val = len(val_lines)
+
+    # using compute_mean_std.py
+    mean = (0.709, 0.381, 0.224)
+    std = (0.127, 0.079, 0.043)
+
+    # dataset
+    train_dataset = ClassDataset(train_lines, train=True, transforms=get_transform(train=True, mean=mean,
+                                                                                   std=std, crop_size=args.size))
+    val_dataset = ClassDataset(val_lines, train=False, transforms=get_transform(train=False, mean=mean,
+                                                                                std=std, crop_size=args.size))
+    # 是否按图片相似高宽比采样图片组成batch, 使用的话能够减小训练时所需GPU显存，默认使用
+    if args.aspect_ratio_group_factor != -1:
+        gen = get_dataloader_with_aspect_ratio_group(train_dataset, args.aspect_ratio_group_factor,
+                                                     args.batch_size, args.num_workers)
+    else:
+        gen = torch.utils.data.DataLoader(train_dataset,
+                                          batch_size=args.batch_size,
+                                          shuffle=True,
+                                          pin_memory=True,
+                                          num_workers=args.num_workers)
+    gen_val = torch.utils.data.DataLoader(val_dataset,
+                                          batch_size=1,
+                                          shuffle=False,
+                                          pin_memory=True,
+                                          num_workers=args.num_workers)
+
+    # model初始化
+    model = get_model(num_classes=args.num_classes, backbone=args.backbone, pretrained=args.pretrained)
+    model.to(device)
+
+    # 获取lr下降函数
+    lr_scheduler_func, Init_lr_fit, Min_lr_fit = get_lr_fun(args.optimizer_type,
+                                                            args.batch_size,
+                                                            args.Init_lr,
+                                                            args.Min_lr,
+                                                            args.Epoch,
+                                                            args.lr_decay_type,
+                                                            Auto=args.Auto)
+
+    # 记录loss lr acc
+    train_loss = []
+    learning_rate = []
+    val_acc = []
+
+    best_acc = 0.
+    start_time = time.time()
+
+    print(args)
+
+    params = [p for p in model.parameters() if p.requires_grad]
+
     optimizer = {
-        'adam': optim.Adam(model.parameters(), args.Init_lr, betas=(args.momentum, 0.999),
-                           weight_decay=args.weight_decay),
-        'sgd': optim.SGD(model.parameters(), args.Init_lr, momentum=args.momentum, nesterov=True,
-                         weight_decay=args.weight_decay)
+        'adam': optim.Adam(params, Init_lr_fit, betas=(args.momentum, 0.999), weight_decay=0),
+        'sgd': optim.SGD(params, Init_lr_fit, momentum=args.momentum,
+                         nesterov=True, weight_decay=args.weight_decay)
     }[args.optimizer_type]
 
-    print("-----------------start UnFreeze Train-----------------")
-    # ---------------------------------------#
-    #   获得学习率下降的公式
-    # ---------------------------------------#
-    lr_scheduler_func = get_lr_scheduler(args.lr_decay_type, args.Init_lr, args.Init_lr * 0.01, args.epoch)
-    gen = DataLoader(train_dataset, shuffle=True, batch_size=args.batch_size,
-                     num_workers=args.num_workers)
-    if args.val_csv_path is not None:
-        gen_val = DataLoader(val_dataset, shuffle=True, batch_size=args.batch_size,
-                             num_workers=args.num_workers)
-    else:
-        gen_val = None
-    for epoch_now in range(args.epoch):
-        set_optimizer_lr(optimizer, lr_scheduler_func, epoch_now)
-        model = fit_one_epoch(model=model,
-                              optimizer=optimizer,
-                              epoch_now=epoch_now,
-                              epoch_Freeze=0,
-                              epoch_all=args.epoch,
-                              gen=gen,
-                              gen_val=gen_val,
-                              save_dir=args.save_dir,
-                              cls_weights=cls_weights,
-                              device=device,
-                              loss_history=loss_history,
-                              num_classes=args.num_classes,
-                              interval=args.save_interval)
+    if args.resume != '':
+        checkpoint = torch.load(args.resume, map_location='cpu')
+        model.load_state_dict(checkpoint['model'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        args.Init_Epoch = checkpoint['epoch'] + 1
+        if args.amp:
+            scaler.load_state_dict(checkpoint["scaler"])
+
+    start_Epoch = args.Init_Epoch + 1 if args.resume != '' else 1
+
+    print("---------start Train---------")
+    for epoch in range(start_Epoch, args.Epoch + 1):
+        set_optimizer_lr(optimizer, lr_scheduler_func, epoch)
+        mean_loss, lr = train_one_epoch(model, optimizer, gen, device, epoch, cls_weights=args.cls_weights,
+                                        print_freq=int((num_train / args.UnFreeze_batch_size) // 5), scaler=scaler)
+        acc = evaluate(model, gen_val, device=device)
+        train_loss.append(mean_loss)
+        learning_rate.append(lr)
+        val_acc.append(acc)
+        print('loss_{:.3f}'.format(mean_loss) + '\n' + 'acc_{:.3f}'.format(acc))
+        # write into txt
+        with open(results_file, "a") as f:
+            f.write('loss_{:.3f}'.format(mean_loss) + '\n' + 'acc_{:.3f}'.format(acc) + "\n\n")
+
+        save_file = {"model": model.state_dict(),
+                     "optimizer": optimizer.state_dict(),
+                     "epoch": epoch,
+                     "args": args}
+        if args.amp:
+            save_file["scaler"] = scaler.state_dict()
+
+        if args.save_best is True:
+            if best_acc < val_acc[-1]:
+                torch.save(save_file, os.path.join(log_dir,
+                                                   "best_model_{}.pth".format(args.backbone)))
+                best_acc = val_acc[-1]
+                print('save best acc {}'.format(val_acc[-1]))
+        else:
+            torch.save(save_file, os.path.join(log_dir,
+                                               "{}_epoch_{}_acc_{}.pth".format(args.backbone, epoch, acc)))
+
+    print("---------End UnFreeze Train---------")
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+    print("training time {}".format(total_time_str))
+    # plot loss and lr curve
+    if len(train_loss) != 0 and len(learning_rate) != 0:
+        plot_loss_and_lr(train_loss, learning_rate, log_dir)
+    if len(val_acc) != 0:
+        plot_acc(val_acc, log_dir)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='训练训练参数设置')
-    parser.add_argument('--backbone', type=str, default='resnet50', help='特征网络选择，默认resnet50')
-    parser.add_argument('--num_classes', type=int, default=3, help='种类数量')
-    parser.add_argument('--save_dir', type=str, default="./logs", help='存储文件夹位置')
-    parser.add_argument('--save_interval', type=int, default=3, help='存储间隔')
-    parser.add_argument('--model_path', type=str, default="", help='模型参数位置')
-    parser.add_argument('--w', type=int, default=512, help='宽')
-    parser.add_argument('--h', type=int, default=512, help='高')
-    parser.add_argument('--train_csv_path', type=str, default="./data_csv.csv", help="训练csv")
-    parser.add_argument('--val_csv_path', type=str, required=True, help="验证csv")
-    parser.add_argument('--optimizer_type', type=str, default='adam', help="优化器")
-    parser.add_argument('--batch_size', type=int, default=8, help="训练batch_size")
-    parser.add_argument('--lr_decay_type', type=str, default='cos', help="使用到的学习率下降方式，可选的有'step','cos'")
-    parser.add_argument('--num_workers', type=int, default=2, help="num_workers")
-    parser.add_argument('--Init_lr', type=float, default=1e-4, help="最大学习率")
-    parser.add_argument('--momentum', type=float, default=0.9, help="优化器动量")
-    parser.add_argument('--weight_decay', type=float, default=0, help="权值衰减，使用adam时建议为0")
-    parser.add_argument('--epoch', type=int, default=6, help="解冻训练轮次")
+    parser = argparse.ArgumentParser(description='Training parameter setting')
+    parser.add_argument('--backbone', type=str, default='resnet50')
+    parser.add_argument('--save_dir', type=str, default="./weights")
+    parser.add_argument('--resume', type=str, default="", help='resume')
+    parser.add_argument('--GPU', type=int, default=6, help='GPU_ID')
+    parser.add_argument('--size', type=int, default=384, help='pic size')
+    parser.add_argument('--train', type=str, default=r"weights/train.txt", help="train_txt_path")
+    parser.add_argument('--val', type=str, default=r"weights/val.txt", help="val_txt_path")
+    parser.add_argument('--optimizer_type', type=str, default='adam', help='adam or sgd')
+    parser.add_argument('--num_classes', type=int, default=2)
+    parser.add_argument('--batch_size', type=int, default=24)
+    parser.add_argument('--aspect_ratio_group_factor', type=int, default=3)
+    parser.add_argument('--lr_decay_type', type=str, default='cos', help="'step' or 'cos'")
+    parser.add_argument('--num_workers', type=int, default=24, help="num_workers")
+    parser.add_argument('--Init_lr', type=float, default=1e-4, help="max lr")
+    parser.add_argument('--Min_lr', type=float, default=1e-6, help="min lr")
+    parser.add_argument('--momentum', type=float, default=0.9, help="momentum")
+    parser.add_argument('--weight_decay', type=float, default=0, help="adam is 0")
+    parser.add_argument('--Epoch', type=int, default=36)
+    parser.add_argument('--Init_Epoch', type=int, default=0, help="Init_Epoch")
+    parser.add_argument('--pretrained', default=False, action='store_true', help="pretrained")
+    parser.add_argument('--amp', default=True, action='store_true', help="amp or Not")
+    parser.add_argument('--save_best', default=True, action='store_true', help="save best or save all")
     parser.add_argument('--cls_weights', nargs='+', type=float, default=None, help='交叉熵loss系数')
-    parser.add_argument('--label', type=str, default='label', help="标签列名")
     args = parser.parse_args()
 
-    go_train_classes(args)
+    main(args)
+
+
+
+
