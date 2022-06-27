@@ -125,7 +125,7 @@ def main(args):
     print("---------start Train---------")
     for epoch in range(start_Epoch, args.Epoch + 1):
         set_optimizer_lr(optimizer, lr_scheduler_func, epoch)
-        mean_loss, lr = train_one_epoch(model, optimizer, gen, device, epoch, max_epoch=args.Epoch + 1,
+        mean_loss, lr = train_one_epoch(model, optimizer, gen, device, epoch, max_epoch=args.Epoch,
                                         cls_weights=args.cls_weights, scaler=scaler, CE=args.CE,
                                         print_freq=int((num_train / args.batch_size) // 5))
         acc = evaluate(model, gen_val, device=device, print_freq=int(num_val // 5))
