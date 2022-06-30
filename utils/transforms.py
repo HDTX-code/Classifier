@@ -93,5 +93,5 @@ class Normalize(object):
         self.std = std
 
     def __call__(self, image):
-        image = F.normalize(image, mean=self.mean[0], std=self.std[0])
+        image = F.normalize(image, mean=self.mean, std=self.std)
         return image

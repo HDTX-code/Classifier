@@ -162,7 +162,7 @@ def main(args):
     if len(train_loss) != 0 and len(learning_rate) != 0:
         plot_loss_and_lr(train_loss, learning_rate, log_dir)
     if len(val_acc) != 0:
-        plot_acc(val_acc, log_dir)
+        plot_acc(val_acc, log_dir, 'acc')
 
 
 if __name__ == '__main__':
@@ -170,13 +170,13 @@ if __name__ == '__main__':
     parser.add_argument('--backbone', type=str, default='resnet50')
     parser.add_argument('--save_dir', type=str, default="./weights")
     parser.add_argument('--resume', type=str, default="", help='resume')
-    parser.add_argument('--GPU', type=int, default=0, help='GPU_ID')
+    parser.add_argument('--GPU', type=int, default=5, help='GPU_ID')
     parser.add_argument('--size', type=int, default=384, help='pic size')
-    parser.add_argument('--train', type=str, default=r"weights/val.txt", help="train_txt_path")
+    parser.add_argument('--train', type=str, default=r"weights/train.txt", help="train_txt_path")
     parser.add_argument('--val', type=str, default=r"weights/val.txt", help="val_txt_path")
     parser.add_argument('--optimizer_type', type=str, default='adam', help='adam or sgd')
     parser.add_argument('--num_classes', type=int, default=2)
-    parser.add_argument('--batch_size', type=int, default=8)
+    parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--aspect_ratio_group_factor', type=int, default=3)
     parser.add_argument('--lr_decay_type', type=str, default='cos', help="'step' or 'cos'")
     parser.add_argument('--num_workers', type=int, default=24, help="num_workers")
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     parser.add_argument('--Min_lr', type=float, default=1e-6, help="min lr")
     parser.add_argument('--momentum', type=float, default=0.9, help="momentum")
     parser.add_argument('--weight_decay', type=float, default=0, help="adam is 0")
-    parser.add_argument('--Epoch', type=int, default=36)
+    parser.add_argument('--Epoch', type=int, default=64)
     parser.add_argument('--Init_Epoch', type=int, default=0, help="Init_Epoch")
     parser.add_argument('--pretrained', default=False, action='store_true', help="pretrained")
     parser.add_argument('--amp', default=True, action='store_true', help="amp or Not")

@@ -32,17 +32,17 @@ def plot_loss_and_lr(train_loss, learning_rate, log_dir):
         print(e)
 
 
-def plot_acc(acc, log_dir):
+def plot_acc(acc, log_dir, name: str):
     try:
         x = list(range(len(acc)))
-        plt.plot(x, dice, label='acc')
+        plt.plot(x, acc, label=name)
         plt.xlabel('epoch')
-        plt.ylabel('acc')
-        plt.title('Eval acc')
+        plt.ylabel(name)
+        plt.title('Eval {}'.format(name))
         plt.xlim(0, len(acc))
         plt.legend(loc='best')
-        plt.savefig(os.path.join(log_dir, './acc.png'))
+        plt.savefig(os.path.join(log_dir, './{}.png'.format(name)))
         plt.close()
-        print("successful save acc curve!")
+        print("successful save {} curve!".format(name))
     except Exception as e:
         print(e)
